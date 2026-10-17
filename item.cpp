@@ -2,7 +2,6 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
-#include <vector>
 
 using namespace std;
 
@@ -68,13 +67,14 @@ string Item::serialize() const {
 Item Item::deserialize(const string& line) {
     stringstream ss(line);
     string segment;
-    vector<string> parts;
+    string parts[13];
+    int count = 0;
 
-    while (getline(ss, segment, '|')) {
-        parts.push_back(segment);
+    while (getline(ss, segment, '|') && count < 13) {
+        parts[count++] = segment;
     }
 
-    if (parts.size() < 13) return Item();
+    if (count < 13) return Item();
 
     int id = stoi(parts[0]);
     string sId = parts[1];

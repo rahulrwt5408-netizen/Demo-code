@@ -1,22 +1,20 @@
 #include "campusShare.h"
 #include <iostream>
-#include <vector>
 #include <ctime>
-#include<unordered_map>
-#include<queue>
-#include <algorithm>
 
 using namespace std;
 
 int main() {
-    // Load existing data from files at startup
-    vector<User> users = FileManager::loadUsers();
-    vector<Item> items = FileManager::loadItems();
+    // Load existing data from files at startup using fixed arrays
+    User users[100];
+    Item items[100];
+    int userCount = FileManager::loadUsers(users);
+    int itemCount = FileManager::loadItems(items);
 
     int portalChoice;
     do {
         cout << "\n========================================\n";
-        cout << "       CAMPUS SHARE - WELCOME PORTAL    \n";
+        cout << "       CAMPUS SHARE - WELCOME PORTAL     \n";
         cout << "========================================\n";
         cout << "1. Student / User Portal\n";
         cout << "2. Admin Portal (Analytics & Control)\n";
@@ -28,7 +26,7 @@ int main() {
             int authChoice;
             do {
                 cout << "\n----------------------------------------\n";
-                cout << "         STUDENT AUTHENTICATION         \n";
+                cout << "         STUDENT AUTHENTICATION          \n";
                 cout << "----------------------------------------\n";
                 cout << "1. Register Student\n";
                 cout << "2. Login\n";
@@ -42,7 +40,7 @@ int main() {
                     cin >> sId;
                     cout << "Enter Name: ";
                     cin.ignore();
-                    getline(cin,name);
+                    getline(cin, name);
                     cout << "Enter Gmail: ";
                     cin >> gmail;
                     cout << "Enter Password: ";
@@ -50,10 +48,13 @@ int main() {
                     cout << "Enter Role (Buyer/Seller): ";
                     cin >> role;
 
-                    User newUser(sId, name, gmail, pass, role);
-                    users.push_back(newUser);
-                    FileManager::saveUsers(users);
-                    cout << "Registration successful! Please login now.\n";
+                    if (userCount < 100) {
+                        users[userCount++] = User(sId, name, gmail, pass, role);
+                        FileManager::saveUsers(users, userCount);
+                        cout << "Registration successful! Please login now.\n";
+                    } else {
+                        cout << "Error: User limit reached!\n";
+                    }
 
                 } else if (authChoice == 2) {
                     string gmail, pass;
@@ -65,7 +66,7 @@ int main() {
                     int loggedInIndex = -1;
                     string hashedPassword = User::hashPassword(pass);
                     
-                    for (size_t i = 0; i < users.size(); ++i) {
+                    for (int i = 0; i < userCount; ++i) {
                         if (users[i].getGmail() == gmail && users[i].getPasswordHash() == hashedPassword) {
                             loggedInIndex = i;
                             break;
@@ -79,11 +80,11 @@ int main() {
                         int studentChoice;
                         do {
                             cout << "\n----------------------------------------\n";
-                            cout << "      STUDENT DASHBOARD (" << u.getName() << ")    \n";
+                            cout << "     STUDENT DASHBOARD (" << u.getName() << ")    \n";
                             cout << "----------------------------------------\n";
                             cout << "1. Explore Available Listings\n";
                             cout << "2. Add Item Listing (Seller)\n";
-                            cout << "3. Campus Navigation\n";
+                            cout << "3. Campus Navigation (BFS)\n";
                             cout << "4. Search Items\n";
                             cout << "5. Rate / Buy Item (Buyer)\n";
                             cout << "6. View Wishlist\n";
@@ -94,11 +95,11 @@ int main() {
 
                             switch (studentChoice) {
                                 case 1: {
-                                    if (items.empty()) {
+                                    if (itemCount == 0) {
                                         cout << "No items listed yet.\n";
                                     } else {
-                                        for (const auto& item : items) {
-                                            item.display();
+                                        for (int i = 0; i < itemCount; ++i) {
+                                            items[i].display();
                                         }
                                     }
                                     break;
@@ -125,93 +126,105 @@ int main() {
                                     cout << "Enter Condition (New/Used): ";
                                     cin >> cond;
 
-                                    Item newItem(id, sId, name, cat, desc, price, rPrice, cond, "Sell", "Available", 0.0, time(0));
-                                    items.push_back(newItem);
-                                    FileManager::saveItems(items);
-                                    cout << "Item listed successfully!\n";
+                                    if (itemCount < 100) {
+                                        items[itemCount++] = Item(id, sId, name, cat, desc, price, rPrice, cond, "Sell", "Available", 0.0, time(0));
+                                        FileManager::saveItems(items, itemCount);
+                                        cout << "Item listed successfully!\n";
+                                    } else {
+                                        cout << "Error: Item limit reached!\n";
+                                    }
                                     break;
                                 }
                                 case 3: {
-    cout << "\n========================================\n";
-    cout << "      CAMPUS GRAPH NAVIGATION (BFS)     \n";
-    cout << "========================================\n";
-    
-    // Graph representation using Adjacency List (unordered_map + vector of pairs)
-    unordered_map<string, vector<pair<string, int>>> campusGraph;
-    
-    campusGraph["Gate 1"] = {{"Auditorium", 100}, {"Admin Block", 150}};
-    campusGraph["Auditorium"] = {{"Gate 1", 100}, {"CS Block", 50}};
-    campusGraph["CS Block"] = {{"Auditorium", 50}, {"Library", 80}};
-    campusGraph["Library"] = {{"CS Block", 80}, {"Cafeteria", 120}, {"Admin Block", 60}};
-    campusGraph["Cafeteria"] = {{"Library", 120}};
-    campusGraph["Admin Block"] = {{"Gate 1", 150}, {"Library", 60}};
+                                    cout << "\n========================================\n";
+                                    cout << "      CAMPUS GRAPH NAVIGATION (BFS)      \n";
+                                    cout << "========================================\n";
+                                    
+                                    string spots[6] = {"Gate 1", "Auditorium", "CS Block", "Library", "Cafeteria", "Admin Block"};
+                                    // Adjacency matrix for 6 campus locations
+                                    int graph[6][6] = {
+                                        {0, 1, 0, 0, 0, 1}, // Gate 1
+                                        {1, 0, 1, 0, 0, 0}, // Auditorium
+                                        {0, 1, 0, 1, 0, 0}, // CS Block
+                                        {0, 0, 1, 0, 1, 1}, // Library
+                                        {0, 0, 0, 1, 0, 0}, // Cafeteria
+                                        {1, 0, 0, 1, 0, 0}  // Admin Block
+                                    };
 
-    cout << "Available Campus Spots:\n";
-    cout << "- Gate 1\n- Auditorium\n- CS Block\n- Library\n- Cafeteria\n- Admin Block\n\n";
+                                    cout << "Available Campus Spots:\n";
+                                    for(int i = 0; i < 6; ++i) {
+                                        cout << "- " << spots[i] << "\n";
+                                    }
+                                    cout << "\n";
 
-    string start, dest;
-    cout << "Enter Starting Location: ";
-    cin.ignore();
-    getline(cin, start);
-    cout << "Enter Destination: ";
-    getline(cin, dest);
+                                    string start, dest;
+                                    cout << "Enter Starting Location: ";
+                                    cin.ignore();
+                                    getline(cin, start);
+                                    cout << "Enter Destination: ";
+                                    getline(cin, dest);
 
-    if (campusGraph.find(start) == campusGraph.end() || campusGraph.find(dest) == campusGraph.end()) {
-        cout << "Invalid location entered! Please choose from the available spots.\n";
-        break;
-    }
+                                    int startIdx = -1, destIdx = -1;
+                                    for(int i = 0; i < 6; ++i) {
+                                        if(spots[i] == start) startIdx = i;
+                                        if(spots[i] == dest) destIdx = i;
+                                    }
 
-    // BFS Algorithm for shortest path traversal
-    unordered_map<string, string> parent;
-    unordered_map<string, bool> visited;
-    queue<string> q;
+                                    if (startIdx == -1 || destIdx == -1) {
+                                        cout << "Invalid location entered! Please choose from the available spots.\n";
+                                        break;
+                                    }
 
-    q.push(start);
-    visited[start] = true;
-    parent[start] = "";
+                                    // Array-based Queue for BFS traversal
+                                    int q[10];
+                                    int front = 0, rear = 0;
+                                    bool visited[6] = {false};
+                                    int parent[6];
+                                    for(int i = 0; i < 6; ++i) parent[i] = -1;
 
-    bool found = false;
-    while (!q.empty()) {
-        string curr = q.front();
-        q.pop();
+                                    q[rear++] = startIdx;
+                                    visited[startIdx] = true;
 
-        if (curr == dest) {
-            found = true;
-            break;
-        }
+                                    bool found = false;
+                                    while (front < rear) {
+                                        int curr = q[front++];
 
-        for (auto& neighbor : campusGraph[curr]) {
-            string nextLoc = neighbor.first;
-            if (!visited[nextLoc]) {
-                visited[nextLoc] = true;
-                parent[nextLoc] = curr;
-                q.push(nextLoc);
-            }
-        }
-    }
+                                        if (curr == destIdx) {
+                                            found = true;
+                                            break;
+                                        }
 
-    if (found) {
-        vector<string> path;
-        string curr = dest;
-        while (curr != "") {
-            path.push_back(curr);
-            curr = parent[curr];
-        }
-        reverse(path.begin(), path.end());
+                                        for (int next = 0; next < 6; ++next) {
+                                            if (graph[curr][next] == 1 && !visited[next]) {
+                                                visited[next] = true;
+                                                parent[next] = curr;
+                                                q[rear++] = next;
+                                            }
+                                        }
+                                    }
 
-        cout << "\n[Shortest Route Found via Graph BFS]\nPath: ";
-        for (size_t i = 0; i < path.size(); ++i) {
-            cout << path[i];
-            if (i + 1 < path.size()) cout << " -> ";
-        }
-        cout << "\n";
-    } else {
-        cout << "No path found between " << start << " and " << dest << "!\n";
-    }
-    break;
-}
+                                    if (found) {
+                                        int path[6];
+                                        int pathLen = 0;
+                                        int curr = destIdx;
+                                        while (curr != -1) {
+                                            path[pathLen++] = curr;
+                                            curr = parent[curr];
+                                        }
+
+                                        cout << "\n[Shortest Route Found via Graph BFS]\nPath: ";
+                                        for (int i = pathLen - 1; i >= 0; --i) {
+                                            cout << spots[path[i]];
+                                            if (i > 0) cout << " -> ";
+                                        }
+                                        cout << "\n";
+                                    } else {
+                                        cout << "No path found between " << start << " and " << dest << "!\n";
+                                    }
+                                    break;
+                                }
                                 case 4: {
-                                    if (items.empty()) {
+                                    if (itemCount == 0) {
                                         cout << "No items available to search.\n";
                                         break;
                                     }
@@ -231,9 +244,9 @@ int main() {
 
                                         bool matchFound = false;
                                         cout << "\nSearch Results:\n";
-                                        for (const auto& item : items) {
-                                            if (item.getName().find(query) != string::npos) {
-                                                item.display();
+                                        for (int i = 0; i < itemCount; ++i) {
+                                            if (items[i].getName().find(query) != string::npos) {
+                                                items[i].display();
                                                 matchFound = true;
                                             }
                                         }
@@ -247,9 +260,9 @@ int main() {
 
                                         bool matchFound = false;
                                         cout << "\nSearch Results:\n";
-                                        for (const auto& item : items) {
-                                            if (item.getCategory().find(catQuery) != string::npos) {
-                                                item.display();
+                                        for (int i = 0; i < itemCount; ++i) {
+                                            if (items[i].getCategory().find(catQuery) != string::npos) {
+                                                items[i].display();
                                                 matchFound = true;
                                             }
                                         }
@@ -266,18 +279,19 @@ int main() {
                                     break;
                                 }
                                 case 6: {
-                                    vector<int> userWishlist = u.getWishlist();
-                                    if (userWishlist.empty()) {
+                                    int count = u.getWishlistCount();
+                                    if (count == 0) {
                                         cout << "Your wishlist is empty.\n";
                                     } else {
                                         cout << "\n========================================\n";
-                                        cout << "            YOUR WISHLIST               \n";
+                                        cout << "             YOUR WISHLIST              \n";
                                         cout << "========================================\n";
-                                        for (int wId : userWishlist) {
+                                        for (int i = 0; i < count; ++i) {
+                                            int wId = u.getWishlistElement(i);
                                             bool found = false;
-                                            for (const auto& item : items) {
-                                                if (item.getItemId() == wId) {
-                                                    item.display();
+                                            for (int j = 0; j < itemCount; ++j) {
+                                                if (items[j].getItemId() == wId) {
+                                                    items[j].display();
                                                     found = true;
                                                     break;
                                                 }
@@ -295,8 +309,8 @@ int main() {
                                     cin >> wId;
 
                                     bool itemExists = false;
-                                    for (const auto& item : items) {
-                                        if (item.getItemId() == wId) {
+                                    for (int i = 0; i < itemCount; ++i) {
+                                        if (items[i].getItemId() == wId) {
                                             itemExists = true;
                                             break;
                                         }
@@ -304,7 +318,7 @@ int main() {
 
                                     if (itemExists) {
                                         u.addToWishlist(wId);
-                                        FileManager::saveUsers(users);
+                                        FileManager::saveUsers(users, userCount);
                                         cout << "Item added to your wishlist successfully!\n";
                                     } else {
                                         cout << "Error: Item ID not found!\n";
@@ -337,15 +351,15 @@ int main() {
             cout << "Enter Admin Passcode: ";
             cin >> adminPass;
             if (adminPass == "admin123") {
-                AdminManager::showAnalytics(users, items);
+                AdminManager::showAnalytics(users, userCount, items, itemCount);
             } else {
                 cout << "Error: Incorrect admin passcode! Access Denied.\n";
             }
 
         } else if (portalChoice == 3) {
             cout << "Exiting Campus Share. Saving data to files...\n";
-            FileManager::saveUsers(users);
-            FileManager::saveItems(items);
+            FileManager::saveUsers(users, userCount);
+            FileManager::saveItems(items, itemCount);
             break;
         } else {
             cout << "Invalid selection! Please choose 1, 2, or 3.\n";

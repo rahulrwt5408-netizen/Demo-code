@@ -3,10 +3,8 @@
 
 #include <iostream>
 #include <string>
-#include <vector>
 #include <fstream>
 #include <sstream>
-#include <functional>
 #include <iomanip>
 #include <ctime>
 
@@ -20,12 +18,19 @@ protected:
     string gmail;
     string passwordHash;
     string role;
-    vector<int> wishlist; // Added wishlist vector
+    int wishlist[20]; // Fixed array instead of vector
+    int wishlistCount;
 
 public:
-    User() {}
+    User() : wishlistCount(0) {
+        for (int i = 0; i < 20; ++i) wishlist[i] = 0;
+    }
+
     User(string sId, string n, string g, string pass, string r)
-        : studentId(sId), name(n), gmail(g), passwordHash(hashPassword(pass)), role(r) {}
+        : studentId(sId), name(n), gmail(g), passwordHash(hashPassword(pass)), role(r), wishlistCount(0) {
+        for (int i = 0; i < 20; ++i) wishlist[i] = 0;
+    }
+    
     virtual ~User() {}
 
     string getStudentId() const { return studentId; }
@@ -33,38 +38,52 @@ public:
     string getGmail() const { return gmail; }
     string getPasswordHash() const { return passwordHash; }
     string getRole() const { return role; }
-    vector<int> getWishlist() const { return wishlist; }
+    
+    int getWishlistCount() const { return wishlistCount; }
+    int getWishlistElement(int index) const { return wishlist[index]; }
 
     void setPasswordHash(const string& hash) { passwordHash = hash; }
     void setRole(const string& r) { role = r; }
 
     void addToWishlist(int itemId) {
-        // Check if already in wishlist
-        for (int id : wishlist) {
-            if (id == itemId) return;
+        for (int i = 0; i < wishlistCount; ++i) {
+            if (wishlist[i] == itemId) return;
         }
-        wishlist.push_back(itemId);
+        if (wishlistCount < 20) {
+            wishlist[wishlistCount++] = itemId;
+        }
     }
 
     void removeFromWishlist(int itemId) {
-        for (auto it = wishlist.begin(); it != wishlist.end(); ++it) {
-            if (*it == itemId) {
-                wishlist.erase(it);
+        int index = -1;
+        for (int i = 0; i < wishlistCount; ++i) {
+            if (wishlist[i] == itemId) {
+                index = i;
                 break;
             }
         }
+        if (index != -1) {
+            for (int i = index; i < wishlistCount - 1; ++i) {
+                wishlist[i] = wishlist[i + 1];
+            }
+            wishlistCount--;
+        }
     }
 
+    // Custom hash function (No STL std::hash)
     static string hashPassword(const string& password) {
-        hash<string> hasher;
-        return to_string(hasher(password));
+        unsigned long long hashVal = 0;
+        for (char c : password) {
+            hashVal = (hashVal * 31) + c;
+        }
+        return to_string(hashVal);
     }
 
     virtual string serialize() const {
         string wishStr = "";
-        for (size_t i = 0; i < wishlist.size(); ++i) {
+        for (int i = 0; i < wishlistCount; ++i) {
             wishStr += to_string(wishlist[i]);
-            if (i + 1 < wishlist.size()) wishStr += ",";
+            if (i + 1 < wishlistCount) wishStr += ",";
         }
         return studentId + "|" + name + "|" + gmail + "|" + passwordHash + "|" + role + "|" + wishStr;
     }
@@ -87,13 +106,14 @@ public:
             string itemStr;
             while (getline(wss, itemStr, ',')) {
                 if (!itemStr.empty()) {
-                    u.wishlist.push_back(stoi(itemStr));
+                    u.addToWishlist(stoi(itemStr));
                 }
             }
         }
         return u;
     }
 };
+
 // ==================== ITEM CLASS ====================
 class Item {
 private:
@@ -172,13 +192,14 @@ public:
     static Item deserialize(const string& line) {
         stringstream ss(line);
         string segment;
-        vector<string> parts;
+        string parts[13];
+        int count = 0;
 
-        while (getline(ss, segment, '|')) {
-            parts.push_back(segment);
+        while (getline(ss, segment, '|') && count < 13) {
+            parts[count++] = segment;
         }
 
-        if (parts.size() < 13) return Item();
+        if (count < 13) return Item();
 
         int id = stoi(parts[0]);
         string sId = parts[1];
@@ -203,66 +224,66 @@ public:
 // ==================== FILE MANAGER ====================
 class FileManager {
 public:
-    static void saveUsers(const vector<User>& users) {
+    static void saveUsers(User users[], int userCount) {
         ofstream file("students.dat");
-        for (const auto& u : users) {
-            file << u.serialize() << "\n";
+        for (int i = 0; i < userCount; ++i) {
+            file << users[i].serialize() << "\n";
         }
         file.close();
     }
 
-    static vector<User> loadUsers() {
-        vector<User> users;
+    static int loadUsers(User users[]) {
         ifstream file("students.dat");
-        if (!file.is_open()) return users;
+        if (!file.is_open()) return 0;
 
         string line;
-        while (getline(file, line)) {
+        int count = 0;
+        while (getline(file, line) && count < 100) {
             if (!line.empty()) {
-                users.push_back(User::deserialize(line));
+                users[count++] = User::deserialize(line);
             }
         }
         file.close();
-        return users;
+        return count;
     }
 
-    static void saveItems(const vector<Item>& items) {
+    static void saveItems(Item items[], int itemCount) {
         ofstream file("items.dat");
-        for (const auto& item : items) {
-            file << item.serialize() << "\n";
+        for (int i = 0; i < itemCount; ++i) {
+            file << items[i].serialize() << "\n";
         }
         file.close();
     }
 
-    static vector<Item> loadItems() {
-        vector<Item> items;
+    static int loadItems(Item items[]) {
         ifstream file("items.dat");
-        if (!file.is_open()) return items;
+        if (!file.is_open()) return 0;
 
         string line;
-        while (getline(file, line)) {
+        int count = 0;
+        while (getline(file, line) && count < 100) {
             if (!line.empty()) {
-                items.push_back(Item::deserialize(line));
+                items[count++] = Item::deserialize(line);
             }
         }
         file.close();
-        return items;
+        return count;
     }
 };
 
 // ==================== ADMIN MANAGER ====================
 class AdminManager {
 public:
-    static void showAnalytics(const vector<User>& users, const vector<Item>& items) {
+    static void showAnalytics(User users[], int userCount, Item items[], int itemCount) {
         cout << "\n========================================\n";
-        cout << "         ADMIN ANALYTICS DASHBOARD      \n";
+        cout << "         ADMIN ANALYTICS DASHBOARD       \n";
         cout << "========================================\n";
-        cout << "Total registered students : " << users.size() << "\n";
-        cout << "Total items listed        : " << items.size() << "\n";
+        cout << "Total registered students : " << userCount << "\n";
+        cout << "Total items listed        : " << itemCount << "\n";
 
         int activeCount = 0, reservedCount = 0;
-        for (const auto& item : items) {
-            if (item.getAvailabilityStatus() == "Available") {
+        for (int i = 0; i < itemCount; ++i) {
+            if (items[i].getAvailabilityStatus() == "Available") {
                 activeCount++;
             } else {
                 reservedCount++;
@@ -272,28 +293,31 @@ public:
         cout << "Reserved / Sold items     : " << reservedCount << "\n";
 
         cout << "\n--- Category-wise Breakdown ---\n";
-        vector<string> categories;
-        vector<int> counts;
-        for (const auto& item : items) {
-            string cat = item.getCategory();
+        string categories[100];
+        int counts[100];
+        int catCount = 0;
+
+        for (int i = 0; i < itemCount; ++i) {
+            string cat = items[i].getCategory();
             bool found = false;
-            for (size_t i = 0; i < categories.size(); ++i) {
-                if (categories[i] == cat) {
-                    counts[i]++;
+            for (int j = 0; j < catCount; ++j) {
+                if (categories[j] == cat) {
+                    counts[j]++;
                     found = true;
                     break;
                 }
             }
-            if (!found) {
-                categories.push_back(cat);
-                counts.push_back(1);
+            if (!found && catCount < 100) {
+                categories[catCount] = cat;
+                counts[catCount] = 1;
+                catCount++;
             }
         }
 
-        if (categories.empty()) {
+        if (catCount == 0) {
             cout << "No categories found yet.\n";
         } else {
-            for (size_t i = 0; i < categories.size(); ++i) {
+            for (int i = 0; i < catCount; ++i) {
                 cout << categories[i] << " : " << counts[i] << " item(s)\n";
             }
         }

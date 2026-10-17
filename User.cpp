@@ -1,11 +1,12 @@
 #include "campusShare.h"
 #include <iostream>
 #include <sstream>
-#include <functional>
 
 using namespace std;
 
-User::User() {}
+User::User() : wishlistCount(0) {
+    for (int i = 0; i < 20; ++i) wishlist[i] = 0;
+}
 
 User::User(string sId, string n, string g, string pass, string r) {
     studentId = sId;
@@ -13,6 +14,8 @@ User::User(string sId, string n, string g, string pass, string r) {
     gmail = g;
     passwordHash = hashPassword(pass);
     role = r;
+    wishlistCount = 0;
+    for (int i = 0; i < 20; ++i) wishlist[i] = 0;
 }
 
 string User::getStudentId() const {
@@ -35,6 +38,14 @@ string User::getRole() const {
     return role;
 }
 
+int User::getWishlistCount() const {
+    return wishlistCount;
+}
+
+int User::getWishlistElement(int index) const {
+    return wishlist[index];
+}
+
 void User::setPasswordHash(const string& hash) {
     passwordHash = hash;
 }
@@ -43,19 +54,47 @@ void User::setRole(const string& r) {
     role = r;
 }
 
+void User::addToWishlist(int itemId) {
+    for (int i = 0; i < wishlistCount; ++i) {
+        if (wishlist[i] == itemId) return;
+    }
+    if (wishlistCount < 20) {
+        wishlist[wishlistCount++] = itemId;
+    }
+}
+
+void User::removeFromWishlist(int itemId) {
+    int index = -1;
+    for (int i = 0; i < wishlistCount; ++i) {
+        if (wishlist[i] == itemId) {
+            index = i;
+            break;
+        }
+    }
+    if (index != -1) {
+        for (int i = index; i < wishlistCount - 1; ++i) {
+            wishlist[i] = wishlist[i + 1];
+        }
+        wishlistCount--;
+    }
+}
+
+// Custom hash function (No STL std::hash)
 string User::hashPassword(const string& password) {
-    hash<string> hasher;
-    return to_string(hasher(password));
+    unsigned long long hashVal = 0;
+    for (char c : password) {
+        hashVal = (hashVal * 31) + c;
+    }
+    return to_string(hashVal);
 }
 
 string User::serialize() const {
-    stringstream ss;
-    ss << studentId << "|"
-       << name << "|"
-       << gmail << "|"
-       << passwordHash << "|"
-       << role;
-    return ss.str();
+    string wishStr = "";
+    for (int i = 0; i < wishlistCount; ++i) {
+        wishStr += to_string(wishlist[i]);
+        if (i + 1 < wishlistCount) wishStr += ",";
+    }
+    return studentId + "|" + name + "|" + gmail + "|" + passwordHash + "|" + role + "|" + wishStr;
 }
 
 // Buyer functions
@@ -94,7 +133,7 @@ void Seller::addItemListing(int itemId, const string& name,
 }
 
 void Seller::editItemListing(int itemId, const string& newName,
-                             double newPrice, const string& newDesc) {
+                           double newPrice, const string& newDesc) {
     cout << "Item " << itemId << " updated: "
          << newName << ", Price: Rs. " << newPrice
          << ", Description: " << newDesc << "\n";

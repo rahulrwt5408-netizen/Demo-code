@@ -4,48 +4,48 @@
 
 using namespace std;
 
-void FileManager::saveUsers(const vector<User>& users) {
+void FileManager::saveUsers(User users[], int userCount) {
     ofstream file("students.dat");
-    for (const auto& u : users) {
-        file << u.serialize() << "\n";
+    for (int i = 0; i < userCount; ++i) {
+        file << users[i].serialize() << "\n";
     }
     file.close();
 }
 
-vector<User> FileManager::loadUsers() {
-    vector<User> users;
+int FileManager::loadUsers(User users[]) {
     ifstream file("students.dat");
-    if (!file.is_open()) return users;
+    if (!file.is_open()) return 0;
 
     string line;
-    while (getline(file, line)) {
+    int count = 0;
+    while (getline(file, line) && count < 100) {
         if (!line.empty()) {
-            users.push_back(User::deserialize(line));
+            users[count++] = User::deserialize(line);
         }
     }
     file.close();
-    return users;
+    return count;
 }
 
-void FileManager::saveItems(const vector<Item>& items) {
+void FileManager::saveItems(Item items[], int itemCount) {
     ofstream file("items.dat");
-    for (const auto& item : items) {
-        file << item.serialize() << "\n";
+    for (int i = 0; i < itemCount; ++i) {
+        file << items[i].serialize() << "\n";
     }
     file.close();
 }
 
-vector<Item> FileManager::loadItems() {
-    vector<Item> items;
+int FileManager::loadItems(Item items[]) {
     ifstream file("items.dat");
-    if (!file.is_open()) return items;
+    if (!file.is_open()) return 0;
 
     string line;
-    while (getline(file, line)) {
+    int count = 0;
+    while (getline(file, line) && count < 100) {
         if (!line.empty()) {
-            items.push_back(Item::deserialize(line));
+            items[count++] = Item::deserialize(line);
         }
     }
     file.close();
-    return items;
+    return count;
 }
